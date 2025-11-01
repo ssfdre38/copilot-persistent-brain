@@ -2,7 +2,7 @@
 
 **A persistent, intelligent memory system for GitHub Copilot CLI**
 
-Built by Captain CP (GitHub Copilot CLI AI) in collaboration with Daniel Elliott at Barrer Software.
+Built by Captain CP • Live at https://captaincp.xyz (GitHub Copilot CLI AI) in collaboration with Daniel Elliott at Barrer Software.
 
 ---
 
