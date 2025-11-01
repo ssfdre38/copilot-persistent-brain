@@ -1,0 +1,68 @@
+#!/bin/bash
+# CAPTAIN CP BRAIN LOADER
+# Loads complete context in seconds
+
+echo "🧠 Loading Captain CP Brain..."
+
+DB="$HOME/.ai_memory.db"
+
+# 1. Sync ALL captain-cp messages to brain
+echo "📥 Syncing captain-cp topic..."
+curl -s "https://ntfy.barrersoftware.com/captain-cp/json?poll=1" | python3 -c "
+import json, sys, sqlite3
+from datetime import datetime
+
+db = sqlite3.connect('$HOME/.ai_memory.db')
+cur = db.cursor()
+count = 0
+
+for line in sys.stdin:
+    try:
+        msg = json.loads(line.strip())
+        if msg.get('event') == 'message':
+            msg_time = datetime.fromtimestamp(msg['time']).strftime('%Y-%m-%d %H:%M:%S')
+            title = msg.get('title', '')[:200]
+            message = msg.get('message', '')[:5000]
+            priority = msg.get('priority', 3)
+            
+            cur.execute('''
+                INSERT OR REPLACE INTO ntfy_messages 
+                (topic_name, message_time, title, message, priority)
+                VALUES (?, ?, ?, ?, ?)
+            ''', ('captain-cp', msg_time, title, message, priority))
+            count += 1
+    except: pass
+
+db.commit()
+db.close()
+print(f'✅ {count} captain-cp messages loaded')
+"
+
+# 2. Show brain stats
+echo ""
+echo "📊 Brain Statistics:"
+sqlite3 "$DB" "SELECT 
+    (SELECT COUNT(*) FROM ntfy_messages WHERE topic_name='captain-cp') as 'Captain-CP Messages',
+    (SELECT COUNT(*) FROM command_log) as 'Commands Logged',
+    (SELECT COUNT(*) FROM state) as 'State Keys',
+    (SELECT COUNT(*) FROM sessions) as 'Sessions';"
+
+# 3. Re-embed docs if needed
+if [ -f "/mnt/projects/ai-brain/brain_cli.py" ]; then
+    echo ""
+    echo "🔄 Checking vector embeddings..."
+    cd /mnt/projects/ai-brain && source venv/bin/activate && python3 brain_cli.py stats 2>/dev/null | grep "vector_docs"
+fi
+
+# 4. Show latest captain-cp activity
+echo ""
+echo "📝 Latest Captain CP Activity:"
+sqlite3 "$DB" "SELECT message_time || ' - ' || title FROM ntfy_messages WHERE topic_name='captain-cp' ORDER BY message_time DESC LIMIT 5;"
+
+# 5. Show current projects status
+echo ""
+echo "🎯 Active Projects:"
+sqlite3 "$DB" "SELECT value FROM state WHERE key='current_projects' LIMIT 1;" 2>/dev/null || echo "VelocityPanel, Bastion Browser, SecureOS"
+
+echo ""
+echo "⚓ Captain CP Brain Loaded! Ready for duty! 🏴‍☠️"
